@@ -26,10 +26,13 @@ CLASS_DOCSTRING = '''"""HMM defined by an observation-indexed transition tensor 
     next-token distributions : (n_obs,)
     """'''
 
-SETUP = '''# Auto-reload edited modules (processes.py / solutions.py / tests.py / plotting.py)
-# without restarting the kernel.
-%load_ext autoreload
-%autoreload 2
+SETUP = '''# Best-effort auto-reload of edited modules (silently skipped where IPython's
+# autoreload extension is unavailable, e.g. some Colab Python 3.12 images).
+try:
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
+except Exception:
+    pass
 
 import sys
 import pathlib
@@ -244,9 +247,13 @@ COLAB_MODULES = ["processes", "solutions", "tests", "plotting"]
 # "Open in Colab" badges. None -> instructions only (Colab can also open via Upload).
 COLAB_BADGE_REPO = "14xp/iliad-comp-mech-materials/blob/main/exercises/colab"
 
-COLAB_SETUP_IMPORTS = '''# Auto-reload the helper modules written above (no kernel restart needed).
-%load_ext autoreload
-%autoreload 2
+COLAB_SETUP_IMPORTS = '''# Best-effort auto-reload of the helper modules written above (silently skipped
+# where IPython's autoreload extension is unavailable, e.g. some Colab 3.12 images).
+try:
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
+except Exception:
+    pass
 
 import numpy as np
 from collections.abc import Sequence
