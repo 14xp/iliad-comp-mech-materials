@@ -143,8 +143,14 @@ def build_notebook(part: dict, kind: str) -> dict:
             cells.append(md(solution_dropdown(name), f"{name}-sol"))
     cells.append(md(part.get("demo_md", "## Demo"), "demo-h"))
     demo_cells = part["demo"] if isinstance(part["demo"], list) else [part["demo"]]
-    for i, dc in enumerate(demo_cells):
-        cells.append(code(dc, "demo" if i == 0 else f"demo-{i}"))
+    code_i = 0
+    for j, entry in enumerate(demo_cells):
+        kind_, text = entry if isinstance(entry, tuple) else ("code", entry)
+        if kind_ == "md":
+            cells.append(md(text, f"demo-md-{j}"))
+        else:
+            cells.append(code(text, "demo" if code_i == 0 else f"demo-{code_i}"))
+            code_i += 1
 
     return {
         "cells": cells,
@@ -203,26 +209,65 @@ plotting.plot_next_token_distributions(
     np.array([np.real(v) for v in arch_ntps.values()]),
     sequences=list(arch_ntps.keys()),
     title=f"Arch next-token-distribution geometry (depth {depth})",
+)''',
+        ("md",
+         "### Bring your own process\n\n"
+         "The processes above come from `processes.py`, but nothing is special about them — "
+         "**any** non-negative transition tensor whose observation-summed matrix is "
+         "row-stochastic defines a valid HMM. Here we define one **inline** (not in "
+         "`processes.py`): the **Fern** process (3 states, 2 symbols). `validate()` confirms "
+         "it is well-formed, then it runs through exactly the same machinery. With only 2 "
+         "symbols, its next-token distributions live on a 1-simplex (a line segment)."),
+        '''def fern(x: float) -> np.ndarray:
+    """Fern process (custom): 3 hidden states, 2 symbols."""
+    assert 0.0 <= x <= 1.0
+    return np.array([
+        [[0.3942, 0.00512, 0.0381], [0.0, 0.53, 0.0], [0.0, 0.326 * x, 0.554]],
+        [[0.3358, 0.01088, 0.2159], [0.0, 0.0, 0.47], [0.12, 0.326 * (1 - x), 0.0]],
+    ])
+
+fern_hmm = HMM(fern(0.5), processes.uniform_initial(3))
+fern_hmm.validate()  # a custom process still has to be a valid HMM
+
+fern_depth = 12
+fern_ntps = fern_hmm.all_next_token_probabilities(fern_depth)
+plotting.plot_next_token_distributions(
+    np.array([np.real(v) for v in fern_ntps.values()]),
+    sequences=list(fern_ntps.keys()),
+    title=f"Fern next-token-distribution geometry (depth {fern_depth})",
 )'''],
 }
 
 PART2 = {
     "stub": "part2_belief_states",
     "overview_key": "part2_overview",
-    "given": ["_propagate", "sequence_probability",
+    "given": ["validate", "_propagate", "sequence_probability",
               "conditional_next_token_probabilities", "all_next_token_probabilities"],
     "methods": ["belief_state", "belief_update",
                 "ntp_from_belief_state", "all_belief_states"],
     "demo_md": "## Demo\n\nWith the belief-state methods implemented, we can collect the reachable belief "
                "states and view their geometry interactively (via the local `plotting.py`). "
-               "Belief states live on the **hidden-state** simplex, so the **arch** process "
-               "(4 states) gives a 3D tetrahedron; hover a point to see the inducing sequence.",
-    "demo": ['''hmm = HMM(processes.mess3(0.15, 0.2), processes.uniform_initial(3))
+               "Belief states live on the **hidden-state** simplex: **Mess3** (3 states) gives a "
+               "2D triangle whose reachable beliefs trace out a fractal, and **arch** (4 states) "
+               "gives a 3D tetrahedron. Hover a point to see the inducing sequence.",
+    "demo": ['''import plotting
+
+hmm = HMM(processes.mess3(0.15, 0.2), processes.uniform_initial(3))
 
 beliefs = hmm.all_belief_states(5)
 print("# distinct reachable sequences <= depth 5:", len(beliefs))
 print("belief after observing (0, 1, 2):", np.round(hmm.belief_state((0, 1, 2)), 4))
-print("next-token dist from that belief :", np.round(hmm.ntp_from_belief_state(hmm.belief_state((0, 1, 2))), 4))''',
+print("next-token dist from that belief :", np.round(hmm.ntp_from_belief_state(hmm.belief_state((0, 1, 2))), 4))
+
+# Mess3 (3 hidden states): belief states live on the 2-simplex (a triangle) and
+# trace out a fractal.
+depth = 7
+mess3_beliefs = hmm.all_belief_states(depth)
+plotting.plot_belief_states(
+    np.array([np.real(v) for v in mess3_beliefs.values()]),
+    sequences=list(mess3_beliefs.keys()),
+    title=f"Mess3 belief-state geometry (depth {depth})",
+)''',
 '''# The arch process: 4 hidden states, 3 symbols. Belief states lie on the 4-state
 # simplex, so they are plotted in 3D (a tetrahedron).
 import plotting
@@ -234,6 +279,32 @@ plotting.plot_belief_states(
     np.array([np.real(v) for v in arch_beliefs.values()]),
     sequences=list(arch_beliefs.keys()),
     title=f"Arch belief-state geometry (depth {depth})",
+)''',
+        ("md",
+         "### Bring your own process\n\n"
+         "The processes above come from `processes.py`, but nothing is special about them — "
+         "**any** non-negative transition tensor whose observation-summed matrix is "
+         "row-stochastic defines a valid HMM. Here we define one **inline** (not in "
+         "`processes.py`): the **Fern** process (3 states, 2 symbols). `validate()` confirms "
+         "it is well-formed, then it runs through exactly the same machinery — and its 3-state "
+         "belief geometry traces out its own fractal in the 2-simplex."),
+        '''def fern(x: float) -> np.ndarray:
+    """Fern process (custom): 3 hidden states, 2 symbols."""
+    assert 0.0 <= x <= 1.0
+    return np.array([
+        [[0.3942, 0.00512, 0.0381], [0.0, 0.53, 0.0], [0.0, 0.326 * x, 0.554]],
+        [[0.3358, 0.01088, 0.2159], [0.0, 0.0, 0.47], [0.12, 0.326 * (1 - x), 0.0]],
+    ])
+
+fern_hmm = HMM(fern(0.5), processes.uniform_initial(3))
+fern_hmm.validate()  # a custom process still has to be a valid HMM
+
+fern_depth = 12
+fern_beliefs = fern_hmm.all_belief_states(fern_depth)
+plotting.plot_belief_states(
+    np.array([np.real(v) for v in fern_beliefs.values()]),
+    sequences=list(fern_beliefs.keys()),
+    title=f"Fern belief-state geometry (depth {fern_depth})",
 )'''],
 }
 
