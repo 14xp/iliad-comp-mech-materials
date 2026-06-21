@@ -1,0 +1,5 @@
+# Runtime + authoring dependencies for the HMM exercises (Python 3.12).
+numpy
+plotly
+scikit-learn
+jupyterlab
